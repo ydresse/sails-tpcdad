@@ -7,6 +7,8 @@
 
 var cowsay = require('cowsay');
 var kue = require('kue');  
+const nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
 
 module.exports = {
   /**
@@ -41,24 +43,42 @@ module.exports = {
   create: async function(req, res) {
     await Sentences.create({ sentence: req.param('sentence') });
 
-
+    
     // create Kue queue
-    // let queue = kue.createQueue();  
-    // queue.create('email', {  
-    //   title: 'Thanks for you sentence !',
-    //   to: req.param('email'),
-    //   template: 'sentenceEmail'
-    // }).priority('high').attempts(5).save();
+    let queue = kue.createQueue({
+      redis: {
+        port:6379,
+        host:'redis'
+      }
+    });  
+    queue.create('email', {  
+        subject: 'New Sentence',
+        text: 'Merci pour la nouvelle phrase : ' + req.param('sentence'),
+        from: "cdad@l3o.eu",
+        to: req.param('email'),
+     }).priority('high').attempts(5).save();
 
-    // queue.process('email', function(job, done) {  
-    //   console.log(job);
-    //   done();
-    // });
+     queue.process('email', function(job, done) {  
 
-    // console.log(req.param('email'));
-    // sails.hook.email.send("createSentenceEmail", {}, { to: 'dresseyassine@gmail.com', subject: "New sentence"}, function(err) {console.log(err || "It worked!");})
-  
+        const url = "smtp://postmaster@mailgun.l3o.eu:fedbe91ae5e3529f94528dd311bea4c9-060550c6-d42c872f@smtp.mailgun.org:587";
+        const transporter = nodemailer.createTransport(url);
+        transporter.sendMail({
+          from: job.data.from,
+          to: job.data.to,
+          subject: job.data.subject,
+          text: job.data.text
+        }, (err, info) => {
+            if (err) return;
+        });
+
+       done();
+     });
     return res.redirect('/say');
+  },
+
+  sendMail: function(from, to, sentence, text){
+    
+
   },
 
   addPicture: async function(req, res) {
