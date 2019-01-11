@@ -1,0 +1,26 @@
+version: '3'
+services:
+  web:
+    build: .
+    volumes:
+      - ./:/app
+    ports:
+      - 1337:1337
+    environment:
+      COW: vader
+      DATABASE_URL: postgresql://moi:biniou@db:5432/cowsay
+    links:
+      - db
+
+  db:
+    # Documentation about this image here: https://hub.docker.com/_/postgres
+    image: postgres:11
+    volumes:
+      - ./docker/psql:/var/lib/postgresql/data
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_USER: moi
+      POSTGRES_PASSWORD: biniou
+      POSTGRES_DB: cowsay
+    ports:
+      - 5432:5432
